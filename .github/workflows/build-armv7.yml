@@ -56,5 +56,5 @@ jobs:
           build-args: |
             NODERED_VERSION=${{ env.NODERED_VERSION }}
           tags: |
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:${{ env.NODERED_VERSION }}
-            ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}:latest
+              ghcr.io/${{ github.repository }}:${{ env.NODERED_VERSION }}
+              ghcr.io/${{ github.repository }}:latest
