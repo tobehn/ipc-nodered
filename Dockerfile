@@ -1,3 +1,4 @@
+ARG NODERED_VERSION
 FROM nodered/node-red:${NODERED_VERSION}
 
 RUN npm install --unsafe-perm --no-update-notifier --no-fund \
