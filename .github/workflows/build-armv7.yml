@@ -30,6 +30,10 @@ jobs:
             | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' \
             | sort -Vr | head -n1)
           echo "🔧 Latest Node-RED version: $LATEST"
+          if [ -z "$LATEST" ]; then
+            echo "❌ Failed to resolve Node-RED version"
+            exit 1
+          fi
           echo "NODERED_VERSION=$LATEST" >> $GITHUB_ENV
 
       - name: Set up Docker Buildx
