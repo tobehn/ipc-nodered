@@ -48,6 +48,7 @@ jobs:
           context: .
           platforms: ${{ env.TARGET_PLATFORM }}
           push: true
+          provenance: false
           build-args: |
             NODERED_VERSION=${{ env.NODERED_VERSION }}
           tags: |
