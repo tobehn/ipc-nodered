@@ -2,7 +2,7 @@ name: Build Node-RED ARMv7 with contrib nodes
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # täglich um 03:00 UTC
+    - cron: '0 3 * * *'
   workflow_dispatch:
 
 env:
@@ -20,30 +20,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt-get install -y jq
+      - name: Install tools
+        run: sudo apt-get install -y jq curl
 
-      - name: Check latest Node-RED version
+      - name: Resolve latest versions
         id: version-check
         run: |
-          LATEST=$(curl -s "https://registry.hub.docker.com/v2/repositories/nodered/node-red/tags?page_size=100" \
+          # Aktuelle Versionen aus DockerHub + npm
+          NODERED=$(curl -s "https://registry.hub.docker.com/v2/repositories/nodered/node-red/tags?page_size=100" \
             | jq -r '.results[].name' \
             | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' \
             | sort -Vr | head -n1)
 
-          echo "🔧 Latest Node-RED version: $LATEST"
-          echo "NODERED_VERSION=$LATEST" >> $GITHUB_ENV
+          S7=$(npm show node-red-contrib-s7 version)
+          SPB=$(npm show node-red-contrib-mqtt-sparkplug-plus version)
 
-          if [ -f .nodered-version ]; then
-            OLD=$(cat .nodered-version)
-            if [ "$OLD" = "$LATEST" ]; then
-              echo "✅ Version $LATEST already built – skipping"
+          echo "🔧 Aktuelle Versionen:"
+          echo "  Node-RED: $NODERED"
+          echo "  S7: $S7"
+          echo "  SparkplugB: $SPB"
+
+          # Vergleich mit vorhandener Datei
+          if [ -f .node-versions.json ]; then
+            OLD_NODERED=$(jq -r '.["node-red"]' .node-versions.json)
+            OLD_S7=$(jq -r '.["node-red-contrib-s7"]' .node-versions.json)
+            OLD_SPB=$(jq -r '.["node-red-contrib-mqtt-sparkplug-plus"]' .node-versions.json)
+
+            if [ "$OLD_NODERED" = "$NODERED" ] && [ "$OLD_S7" = "$S7" ] && [ "$OLD_SPB" = "$SPB" ]; then
+              echo "✅ Alle Versionen aktuell – überspringe Build"
               echo "skip=true" >> $GITHUB_OUTPUT
               exit 0
             fi
           fi
 
           echo "skip=false" >> $GITHUB_OUTPUT
+          echo "NODERED_VERSION=$NODERED" >> $GITHUB_ENV
+          echo "$NODERED" > .nodered-version
+          echo "{\"node-red\":\"$NODERED\",\"node-red-contrib-s7\":\"$S7\",\"node-red-contrib-mqtt-sparkplug-plus\":\"$SPB\"}" > .node-versions.json
 
       - name: Set up Docker Buildx
         if: steps.version-check.outputs.skip != 'true'
@@ -71,12 +84,11 @@ jobs:
             ghcr.io/${{ github.repository }}:${{ env.NODERED_VERSION }}
             ghcr.io/${{ github.repository }}:latest
 
-      - name: Update .nodered-version and commit
+      - name: Commit updated version info
         if: steps.version-check.outputs.skip != 'true'
         run: |
-          echo "${NODERED_VERSION}" > .nodered-version
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add .nodered-version
-          git commit -m "Update Node-RED version to ${NODERED_VERSION}"
+          git add .nodered-version .node-versions.json
+          git commit -m "Update versions to Node-RED $NODERED_VERSION"
           git push
