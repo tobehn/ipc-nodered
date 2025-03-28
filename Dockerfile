@@ -7,4 +7,5 @@ RUN npm install --unsafe-perm --no-update-notifier --no-fund \
     node-red-contrib-opcua \
     node-red-contrib-opcda-client \
     node-red-contrib-modbus \
-    @malysus/node-red-contrib-better-sqlite
+    @malysus/node-red-contrib-better-sqlite \
+    node-red-contrib-influxdb
