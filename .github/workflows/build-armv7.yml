@@ -26,37 +26,82 @@ jobs:
       - name: Resolve latest versions
         id: version-check
         run: |
-          # Aktuelle Versionen aus DockerHub + npm
+          get_latest() {
+            npm show "$1" version 2>/dev/null || echo "not-found"
+          }
+
           NODERED=$(curl -s "https://registry.hub.docker.com/v2/repositories/nodered/node-red/tags?page_size=100" \
             | jq -r '.results[].name' \
             | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' \
             | sort -Vr | head -n1)
 
-          S7=$(npm show node-red-contrib-s7 version)
-          SPB=$(npm show node-red-contrib-mqtt-sparkplug-plus version)
+          V_S7=$(get_latest node-red-contrib-s7)
+          V_SPB=$(get_latest node-red-contrib-mqtt-sparkplug-plus)
+          V_OPCUA=$(get_latest node-red-contrib-opcua)
+          V_OPCDA=$(get_latest node-red-contrib-opcda-client)
+          V_MODBUS=$(get_latest node-red-contrib-modbus)
+          V_SQLITE=$(get_latest @malysus/node-red-contrib-better-sqlite)
+          V_INFLUX=$(get_latest node-red-contrib-influxdb)
 
           echo "🔧 Aktuelle Versionen:"
           echo "  Node-RED: $NODERED"
-          echo "  S7: $S7"
-          echo "  SparkplugB: $SPB"
+          echo "  S7: $V_S7"
+          echo "  SparkplugB: $V_SPB"
+          echo "  OPC UA: $V_OPCUA"
+          echo "  OPC DA: $V_OPCDA"
+          echo "  Modbus: $V_MODBUS"
+          echo "  SQLite: $V_SQLITE"
+          echo "  InfluxDB: $V_INFLUX"
 
-          # Vergleich mit vorhandener Datei
+          echo "NODERED_VERSION=$NODERED" >> $GITHUB_ENV
+
           if [ -f .node-versions.json ]; then
-            OLD_NODERED=$(jq -r '.["node-red"]' .node-versions.json)
-            OLD_S7=$(jq -r '.["node-red-contrib-s7"]' .node-versions.json)
-            OLD_SPB=$(jq -r '.["node-red-contrib-mqtt-sparkplug-plus"]' .node-versions.json)
-
-            if [ "$OLD_NODERED" = "$NODERED" ] && [ "$OLD_S7" = "$S7" ] && [ "$OLD_SPB" = "$SPB" ]; then
-              echo "✅ Alle Versionen aktuell – überspringe Build"
-              echo "skip=true" >> $GITHUB_OUTPUT
-              exit 0
-            fi
+            cmp <(jq -S . .node-versions.json) <(jq -S -n \
+              --arg nr "$NODERED" \
+              --arg s7 "$V_S7" \
+              --arg spb "$V_SPB" \
+              --arg opcua "$V_OPCUA" \
+              --arg opcda "$V_OPCDA" \
+              --arg modbus "$V_MODBUS" \
+              --arg sqlite "$V_SQLITE" \
+              --arg influx "$V_INFLUX" \
+              '{
+                "node-red": $nr,
+                "node-red-contrib-s7": $s7,
+                "node-red-contrib-mqtt-sparkplug-plus": $spb,
+                "node-red-contrib-opcua": $opcua,
+                "node-red-contrib-opcda-client": $opcda,
+                "node-red-contrib-modbus": $modbus,
+                "@malysus/node-red-contrib-better-sqlite": $sqlite,
+                "node-red-contrib-influxdb": $influx
+              }') && SKIP="true" || SKIP="false"
+          else
+            SKIP="false"
           fi
 
-          echo "skip=false" >> $GITHUB_OUTPUT
-          echo "NODERED_VERSION=$NODERED" >> $GITHUB_ENV
-          echo "$NODERED" > .nodered-version
-          echo "{\"node-red\":\"$NODERED\",\"node-red-contrib-s7\":\"$S7\",\"node-red-contrib-mqtt-sparkplug-plus\":\"$SPB\"}" > .node-versions.json
+          echo "skip=$SKIP" >> $GITHUB_OUTPUT
+
+          # immer aktuelle Datei erzeugen
+          jq -S -n \
+            --arg nr "$NODERED" \
+            --arg s7 "$V_S7" \
+            --arg spb "$V_SPB" \
+            --arg opcua "$V_OPCUA" \
+            --arg opcda "$V_OPCDA" \
+            --arg modbus "$V_MODBUS" \
+            --arg sqlite "$V_SQLITE" \
+            --arg influx "$V_INFLUX" \
+            '{
+              "node-red": $nr,
+              "node-red-contrib-s7": $s7,
+              "node-red-contrib-mqtt-sparkplug-plus": $spb,
+              "node-red-contrib-opcua": $opcua,
+              "node-red-contrib-opcda-client": $opcda,
+              "node-red-contrib-modbus": $modbus,
+              "@malysus/node-red-contrib-better-sqlite": $sqlite,
+              "node-red-contrib-influxdb": $influx
+            }' > .node-versions.json
+
 
       - name: Set up Docker Buildx
         if: steps.version-check.outputs.skip != 'true'
