@@ -1,10 +1,10 @@
 {
+  "@malysus/node-red-contrib-better-sqlite": "0.1.1",
   "node-red": "4.0.9",
-  "node-red-contrib-s7": "3.1.0",
-  "node-red-contrib-mqtt-sparkplug-plus": "2.2.0",
-  "node-red-contrib-opcua": "0.2.312",
-  "node-red-contrib-opcda-client": "1.1.5",
-  "node-red-contrib-modbus": "5.24.0",
-  "@malysus/node-red-contrib-better-sqlite": "1.0.2",
-  "node-red-contrib-influxdb": "0.6.1"
+  "node-red-contrib-influxdb": "0.7.0",
+  "node-red-contrib-modbus": "5.43.0",
+  "node-red-contrib-mqtt-sparkplug-plus": "2.1.11",
+  "node-red-contrib-opcda-client": "0.0.7",
+  "node-red-contrib-opcua": "0.2.339",
+  "node-red-contrib-s7": "3.1.0"
 }
