@@ -1,0 +1,127 @@
+name: Build Node-RED v3 ARMv7 with contrib nodes
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: ipc-nodered-v3
+  TARGET_PLATFORM: linux/arm/v7
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install tools
+        run: sudo apt-get install -y jq curl
+
+      - name: Resolve latest versions for Node-RED v3
+        id: version-check
+        run: |
+          get_latest() {
+            npm show "$1" version 2>/dev/null || echo "not-found"
+          }
+
+          # 🔍 Nur Node-RED v3.x-Tags
+          NODERED=$(curl -s "https://registry.hub.docker.com/v2/repositories/nodered/node-red/tags?page_size=100" \
+            | jq -r '.results[].name' \
+            | grep -E '^3\.[0-9]+(\.[0-9]+)?$' \
+            | sort -Vr | head -n1)
+
+          V_S7=$(get_latest node-red-contrib-s7)
+          V_SPB=$(get_latest node-red-contrib-mqtt-sparkplug-plus)
+          V_OPCUA=$(get_latest node-red-contrib-opcua)
+          V_OPCDA=$(get_latest node-red-contrib-opcda-client)
+          V_MODBUS=$(get_latest node-red-contrib-modbus)
+          V_SQLITE=$(get_latest @malysus/node-red-contrib-better-sqlite)
+          V_INFLUX=$(get_latest node-red-contrib-influxdb)
+
+          echo "🔧 Aktuelle Versionen:"
+          echo "  Node-RED v3: $NODERED"
+          echo "  S7: $V_S7"
+          echo "  SparkplugB: $V_SPB"
+          echo "  OPC UA: $V_OPCUA"
+          echo "  OPC DA: $V_OPCDA"
+          echo "  Modbus: $V_MODBUS"
+          echo "  SQLite: $V_SQLITE"
+          echo "  InfluxDB: $V_INFLUX"
+
+          echo "NODERED_VERSION=$NODERED" >> $GITHUB_ENV
+
+          NEW_JSON=$(mktemp)
+          jq -S -n \
+            --arg nr "$NODERED" \
+            --arg s7 "$V_S7" \
+            --arg spb "$V_SPB" \
+            --arg opcua "$V_OPCUA" \
+            --arg opcda "$V_OPCDA" \
+            --arg modbus "$V_MODBUS" \
+            --arg sqlite "$V_SQLITE" \
+            --arg influx "$V_INFLUX" \
+            '{
+              "node-red": $nr,
+              "node-red-contrib-s7": $s7,
+              "node-red-contrib-mqtt-sparkplug-plus": $spb,
+              "node-red-contrib-opcua": $opcua,
+              "node-red-contrib-opcda-client": $opcda,
+              "node-red-contrib-modbus": $modbus,
+              "@malysus/node-red-contrib-better-sqlite": $sqlite,
+              "node-red-contrib-influxdb": $influx
+            }' > "$NEW_JSON"
+
+          if [ ! -f .node-versions-v3.json ]; then
+            echo "ℹ️ Datei .node-versions-v3.json existiert noch nicht – baue Image"
+            cp "$NEW_JSON" .node-versions-v3.json
+            echo "skip=false" >> $GITHUB_OUTPUT
+          elif cmp -s "$NEW_JSON" .node-versions-v3.json; then
+            echo "✅ Versionen sind aktuell – kein Build nötig"
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "🔄 Versionen haben sich geändert – baue Image"
+            cp "$NEW_JSON" .node-versions-v3.json
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        if: steps.version-check.outputs.skip != 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: steps.version-check.outputs.skip != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image for ARMv7 (v3)
+        if: steps.version-check.outputs.skip != 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.v3
+          platforms: ${{ env.TARGET_PLATFORM }}
+          push: true
+          provenance: false
+          build-args: |
+            NODERED_VERSION=${{ env.NODERED_VERSION }}
+          tags: |
+            ghcr.io/${{ github.repository }}-v3:${{ env.NODERED_VERSION }}
+            ghcr.io/${{ github.repository }}-v3:latest
+
+      - name: Commit updated version info
+        if: steps.version-check.outputs.skip != 'true'
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add .node-versions-v3.json
+          git commit -m "Update v3 versions to Node-RED $NODERED_VERSION"
+          git push
