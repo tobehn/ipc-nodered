@@ -5,6 +5,6 @@
   "node-red-contrib-modbus": "5.43.0",
   "node-red-contrib-mqtt-sparkplug-plus": "2.1.11",
   "node-red-contrib-opcda-client": "0.0.7",
-  "node-red-contrib-opcua": "0.2.340",
+  "node-red-contrib-opcua": "0.2.341",
   "node-red-contrib-s7": "3.1.1"
 }
