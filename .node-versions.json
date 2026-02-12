@@ -1,6 +1,6 @@
 {
   "@malysus/node-red-contrib-better-sqlite": "0.1.1",
-  "node-red": "4.1.4",
+  "node-red": "4.1.5",
   "node-red-contrib-influxdb": "0.7.0",
   "node-red-contrib-modbus": "5.45.2",
   "node-red-contrib-mqtt-sparkplug-plus": "2.1.11",
