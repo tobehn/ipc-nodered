@@ -30,9 +30,11 @@ jobs:
             npm show "$1" version 2>/dev/null || echo "not-found"
           }
 
+          # Node-RED 5.x liefert keine linux/arm/v7-Variante mehr -> auf 4.x pinnen,
+          # solange ARMv7 das Build-Ziel ist.
           NODERED=$(curl -s "https://registry.hub.docker.com/v2/repositories/nodered/node-red/tags?page_size=100" \
             | jq -r '.results[].name' \
-            | grep -E '^[0-9]+\.[0-9]+(\.[0-9]+)?$' \
+            | grep -E '^4\.[0-9]+(\.[0-9]+)?$' \
             | sort -Vr | head -n1)
 
           V_S7=$(get_latest node-red-contrib-s7)
