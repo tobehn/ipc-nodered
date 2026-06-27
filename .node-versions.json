@@ -3,8 +3,8 @@
   "node-red": "4.1.11",
   "node-red-contrib-influxdb": "0.7.0",
   "node-red-contrib-modbus": "5.45.2",
-  "node-red-contrib-mqtt-sparkplug-plus": "2.2.3",
+  "node-red-contrib-mqtt-sparkplug-plus": "2.2.4",
   "node-red-contrib-opcda-client": "0.0.7",
-  "node-red-contrib-opcua": "0.2.352",
+  "node-red-contrib-opcua": "0.2.353",
   "node-red-contrib-s7": "3.1.3"
 }
